@@ -1,0 +1,10 @@
+diff --git a/index.d.ts b/index.d.ts
+index 4bcfbb615729d9813c652303a773a9a043b21779..931d1cdd8cb88195c543e06e433b36034d197633 100644
+--- a/index.d.ts
++++ b/index.d.ts
+@@ -640,3 +640,5 @@ export const Chess: {
+      */
+     new (fen?: string): ChessInstance;
+ };
++
++export default Chess;

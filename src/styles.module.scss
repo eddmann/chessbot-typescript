@@ -1,0 +1,30 @@
+.App {
+  min-width: 750px;
+}
+
+.TopNav {
+  text-align: center;
+}
+
+.Button {
+  margin: 5px;
+}
+
+.BotSelector {
+  margin: 10px;
+  display: inline-block;
+
+  label {
+    margin-right: 10px;
+  }
+}
+
+.Chessboard {
+  float: left;
+}
+
+.History {
+  float: right;
+  height: 525px;
+  width: 120px;
+}
