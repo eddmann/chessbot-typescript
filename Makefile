@@ -3,7 +3,7 @@ DOCKER = docker run --rm -v $(PWD):/app:rw,delegated -w /app
 
 .PHONY: install
 install:
-	@$(DOCKER) $(IMAGE) yarn install
+	$(DOCKER) $(IMAGE) yarn install --immutable --immutable-cache
 
 .PHONY: start
 start:
