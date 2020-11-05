@@ -3,7 +3,7 @@ import type { Fen, ShortMove } from './engine';
 
 export type UninitialisedBot = () => InitialisedBot;
 export type InitialisedBot = (fen: Fen) => Promise<ShortMove>;
-export type AvailableBots = { [name: string]: UninitialisedBot };
+export type AvailableBots = Record<string, UninitialisedBot>;
 
 const randomMove: UninitialisedBot = () => fen =>
   new Promise(resolve => {
