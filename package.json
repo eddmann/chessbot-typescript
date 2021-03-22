@@ -4,6 +4,9 @@
   "private": true,
   "homepage": ".",
   "dependencies": {
+    "@material-ui/core": "^4.11.3",
+    "@material-ui/icons": "^4.11.2",
+    "@material-ui/lab": "^4.0.0-alpha.57",
     "@testing-library/jest-dom": "^5.11.4",
     "@testing-library/react": "^11.2.5",
     "@testing-library/user-event": "^12.1.10",
@@ -24,9 +27,10 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
-    "test": "react-scripts test",
+    "test": "react-scripts test --watchAll=false",
     "eject": "react-scripts eject",
-    "lint": "eslint ./src/**/*.{ts,tsx}"
+    "lint": "eslint ./src/**/*.{ts,tsx}",
+    "format": "prettier --write src/**/*.{js,jsx,ts,tsx}"
   },
   "eslintConfig": {
     "extends": [

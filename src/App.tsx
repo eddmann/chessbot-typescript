@@ -1,44 +1,16 @@
-import React, { useState, useEffect, useRef, useCallback, ChangeEvent } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Chessboard from 'chessboardjsx';
 import * as engine from './engine';
 import type { AvailableBots, InitialisedBot } from './bots';
 import styles from './styles.module.scss';
-
-type SelectedBot = {
-  name: string;
-  move: InitialisedBot;
-} | null;
+import { BotSelector, SelectedBot } from './BotSelector';
+import { Button, ButtonGroup } from '@material-ui/core';
+import { ToggleButton } from '@material-ui/lab';
+import { PlayArrow, Pause, Clear, Settings, Timeline } from '@material-ui/icons';
 
 type BoardMove = {
   sourceSquare: engine.Square;
   targetSquare: engine.Square;
-};
-
-const BotSelector: React.FC<{
-  playerName: string;
-  availableBots: AvailableBots;
-  selectedBot: SelectedBot;
-  setSelectedBot: (bot: SelectedBot) => void;
-  disabled: boolean;
-}> = ({ playerName, availableBots, selectedBot, setSelectedBot, disabled }) => {
-  const handleChange = (e: ChangeEvent<HTMLSelectElement>): void => {
-    const name = e.target.value;
-    setSelectedBot(name ? { name, move: availableBots[name]() } : null);
-  };
-
-  return (
-    <div className={styles.BotSelector}>
-      <label>{playerName}</label>
-      <select value={selectedBot?.name} onChange={handleChange} disabled={disabled}>
-        <option value="" key="User">
-          User
-        </option>
-        {Object.keys(availableBots).map(name => (
-          <option key={name}>{name}</option>
-        ))}
-      </select>
-    </div>
-  );
 };
 
 const History: React.FC<{ history: Array<engine.Move> }> = ({ history }) => {
@@ -61,6 +33,8 @@ const App: React.FC<{
   onGameCompleted: (winner: engine.GameWinner) => void;
 }> = ({ bots, onGameCompleted }) => {
   const [isPlaying, setPlaying] = useState<boolean>(false);
+  const [showConfig, setShowConfig] = useState<boolean>(false);
+  const [showStats, setShowStats] = useState<boolean>(false);
   const [fen, setFen] = useState<engine.Fen>(engine.newGame);
   const [history, setHistory] = useState<Array<engine.Move>>([]);
   const [whiteBot, setWhiteBot] = useState<SelectedBot>(null);
@@ -149,12 +123,35 @@ const App: React.FC<{
           setSelectedBot={setBlackBot}
           disabled={isPlaying}
         />
-        <button className={styles.Button} onClick={() => setPlaying(playing => !playing)}>
-          {isPlaying ? 'Pause' : 'Play'}
-        </button>
-        <button className={styles.Button} onClick={newGame}>
-          Reset
-        </button>
+        <ButtonGroup color="primary" aria-label="outlined primary button group">
+          <ToggleButton
+            className={styles.Button}
+            aria-label="list"
+            value="showConfig"
+            selected={showConfig}
+            onChange={() => setShowConfig(!showConfig)}>
+            <Settings />
+          </ToggleButton>
+          <ToggleButton
+            className={styles.Button}
+            aria-label="list"
+            value="showStats"
+            selected={showStats}
+            onChange={() => setShowStats(!showStats)}>
+            <Timeline />
+          </ToggleButton>
+          <ToggleButton
+            className={styles.Button}
+            aria-label="list"
+            value="play"
+            selected={isPlaying}
+            onChange={() => setPlaying(!isPlaying)}>
+            {isPlaying ? <PlayArrow /> : <Pause />}
+          </ToggleButton>
+          <Button className={styles.Button} onClick={newGame} aria-label="list">
+            <Clear />
+          </Button>
+        </ButtonGroup>
       </div>
       <div className={styles.Chessboard}>
         <Chessboard position={fen} allowDrag={onDragStart} onDrop={onMovePiece} />
