@@ -3,7 +3,7 @@ import type { Fen, ShortMove } from './engine';
 
 export type UninitialisedBot = () => InitialisedBot;
 export type InitialisedBot = (fen: Fen) => Promise<ShortMove>;
-export type AvailableBots = Record<string, UninitialisedBot>;
+export type Resolver = (move: ShortMove) => void;
 
 const randomMove: UninitialisedBot = () => fen =>
   new Promise(resolve => {
@@ -14,8 +14,7 @@ const randomMove: UninitialisedBot = () => fen =>
 
 const uciWorker = (file: string, actions: Array<string>): UninitialisedBot => () => {
   const worker = new Worker(file);
-
-  let resolver: ((move: ShortMove) => void) | null = null;
+  let resolver: Resolver | null = null;
 
   worker.addEventListener('message', e => {
     const move = e.data.match(/^bestmove\s([a-h][1-8])([a-h][1-8])/);
@@ -38,7 +37,27 @@ const uciWorker = (file: string, actions: Array<string>): UninitialisedBot => ()
     });
 };
 
-const Bots: AvailableBots = {
+const running: Set<string> = new Set();
+const initialized: Map<string, InitialisedBot> = new Map();
+
+export const runBot = (next: string, fen: string, resolver: Resolver) => {
+  const bot = botmap.get(next);
+  if (bot && !running.has(next)) {
+    running.add(next);
+    if (!initialized.has(next)) {
+      initialized.set(next, (bot as UninitialisedBot)());
+    }
+    const runner = initialized.get(next);
+    if (runner) {
+      runner(fen).then(move => {
+        resolver(move);
+        running.delete(next);
+      });
+    }
+  }
+};
+
+const Bots: Record<string, UninitialisedBot> = {
   Random: randomMove,
   'nmrugg/stockfish (l:1,d:10)': uciWorker('bots/stockfish.js-10.0.2/stockfish.js', [
     'setoption name Skill Level value 1',
@@ -66,4 +85,6 @@ const Bots: AvailableBots = {
   ]),
 };
 
-export default Bots;
+export const botmap: Map<string, UninitialisedBot> = new Map(Object.entries(Bots));
+
+export default botmap;

@@ -1,162 +1,149 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import Chessboard from 'chessboardjsx';
 import * as engine from './engine';
-import type { AvailableBots, InitialisedBot } from './bots';
 import styles from './styles.module.scss';
-import { BotSelector, SelectedBot } from './BotSelector';
-import { Button, ButtonGroup } from '@material-ui/core';
-import { ToggleButton } from '@material-ui/lab';
-import { PlayArrow, Pause, Clear, Settings, Timeline } from '@material-ui/icons';
+import { History } from './components/History';
+import { Panel } from './components/Panel';
+import { Config } from './components/Config';
+import { useGlobalState } from './state';
+import { setTimeFunc } from './actions';
+import { botmap, runBot } from './bots';
 
 type BoardMove = {
   sourceSquare: engine.Square;
   targetSquare: engine.Square;
 };
 
-const History: React.FC<{ history: Array<engine.Move> }> = ({ history }) => {
-  const endRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    endRef.current?.scrollIntoView();
-  }, [history]);
-
-  return (
-    <pre className={styles.History}>
-      {history.map(({ color, piece, from, san }) => `${color}${piece}${from} ${san}`).join('\n')}
-      <div ref={endRef} />
-    </pre>
-  );
+const toHHMMSS = (sec_num: number) => {
+  const h = Math.floor(sec_num / 3600);
+  const m = Math.floor((sec_num - h * 3600) / 60);
+  const s = sec_num - h * 3600 - m * 60;
+  return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
 };
 
-const App: React.FC<{
-  bots: AvailableBots;
-  onGameCompleted: (winner: engine.GameWinner) => void;
-}> = ({ bots, onGameCompleted }) => {
-  const [isPlaying, setPlaying] = useState<boolean>(false);
-  const [showConfig, setShowConfig] = useState<boolean>(false);
-  const [showStats, setShowStats] = useState<boolean>(false);
-  const [fen, setFen] = useState<engine.Fen>(engine.newGame);
-  const [history, setHistory] = useState<Array<engine.Move>>([]);
-  const [whiteBot, setWhiteBot] = useState<SelectedBot>(null);
-  const [blackBot, setBlackBot] = useState<SelectedBot>(null);
-
-  const newGame = () => {
-    setPlaying(false);
-    setFen(engine.newGame);
-    setHistory([]);
-  };
+const App: React.FC = () => {
+  const [isPlaying, setPlaying] = useGlobalState('playing');
+  const [fen, setFen] = useGlobalState('fen');
+  const [history, setHistory] = useGlobalState('history');
+  const [markHistory, setMarkHistory] = useGlobalState('markHistory');
+  const [white, setWhite] = useGlobalState('white');
+  const [black, setBlack] = useGlobalState('black');
+  const [rotation, setRotation] = useGlobalState('rotation');
+  const [wtime, setWtime] = useGlobalState('wtime');
+  const [btime, setBtime] = useGlobalState('btime');
 
   const doMove = useCallback(
     (fen: engine.Fen, from: engine.Square, to: engine.Square) => {
       const move = engine.move(fen, from, to);
-
       if (!move) {
         return;
       }
-
-      const [newFen, action] = move;
-
-      if (engine.isGameOver(newFen)) {
-        onGameCompleted(engine.getGameWinner(newFen));
-        newGame();
-        return;
+      if (isPlaying) {
+        const [newFen, action] = move;
+        setFen(newFen);
+        setHistory(history => [...history, action.san]);
       }
-
-      setFen(newFen);
-      setHistory(history => [...history, action]);
     },
-    [onGameCompleted]
+    [isPlaying]
   );
 
-  const onDragStart = ({ sourceSquare: from }: Pick<BoardMove, 'sourceSquare'>) => {
-    const isWhiteBotTurn = whiteBot && engine.isWhiteTurn(fen);
-    const isBlackBotTurn = blackBot && engine.isBlackTurn(fen);
+  const newGame = () => {
+    setHistory([]);
+    setWtime(0);
+    setBtime(0);
+    setMarkHistory(-1);
+    setFen(engine.newGame);
+  };
 
-    return isPlaying && engine.isMoveable(fen, from) && !(isWhiteBotTurn || isBlackBotTurn);
+  const stopstart = () => {
+    if (isComplete) newGame();
+    if (!isPlaying) setMarkHistory(-1);
+    setPlaying(!isPlaying);
+  };
+
+  const isComplete = engine.isGameOver(fen);
+  const isWhiteTurn = engine.isWhiteTurn(fen);
+  const next = isWhiteTurn ? white : black;
+  const bot = botmap.get(next);
+
+  if (isPlaying && isComplete) setPlaying(false);
+
+  const gotoMark = (mark: number) => {
+    if (isPlaying) stopstart();
+    setFen(engine.replay(history, mark >= 0 ? mark : history.length));
+  };
+
+  setTimeFunc(() => {
+    if (isPlaying) {
+      if (isWhiteTurn) {
+        setWtime(wtime + 1);
+      } else {
+        setBtime(btime + 1);
+      }
+    }
+  });
+
+  const onDragStart = ({ sourceSquare: from }: Pick<BoardMove, 'sourceSquare'>) => {
+    return isPlaying && engine.isMoveable(fen, from) && !bot;
   };
 
   const onMovePiece = ({ sourceSquare: from, targetSquare: to }: BoardMove) => {
     doMove(fen, from, to);
   };
 
+  const r90 = rotation % 2 == 1;
+  const r180 = rotation > 1;
+  const wtext =
+    'White: ' +
+    white +
+    ' ' +
+    toHHMMSS(wtime) +
+    ' ' +
+    (isComplete && !isWhiteTurn ? ' ** Winner **' : '');
+  const btext =
+    'Black: ' +
+    black +
+    ' ' +
+    toHHMMSS(btime) +
+    ' ' +
+    (isComplete && isWhiteTurn ? ' ** Winner **' : '');
+
   useEffect(() => {
     if (!isPlaying) {
       return;
     }
-
-    let isBotMovePlayable = true;
-
-    if (whiteBot && engine.isWhiteTurn(fen)) {
-      whiteBot.move(fen).then(({ from, to }: engine.ShortMove) => {
-        if (isBotMovePlayable) doMove(fen, from, to);
-      });
-    }
-
-    if (blackBot && engine.isBlackTurn(fen)) {
-      blackBot.move(fen).then(({ from, to }: engine.ShortMove) => {
-        if (isBotMovePlayable) doMove(fen, from, to);
-      });
-    }
+    runBot(next, fen, ({ from, to }) => {
+      doMove(fen, from, to);
+    });
 
     return () => {
-      isBotMovePlayable = false;
+      //
     };
-  }, [isPlaying, fen, whiteBot, blackBot, doMove]);
+  }, [isPlaying, fen, white, black, doMove]);
 
   return (
     <div className={styles.App}>
-      <header>
-        <h1>♛ Chessbot</h1>
-      </header>
-      <div className={styles.TopNav}>
-        <BotSelector
-          playerName="White"
-          availableBots={bots}
-          selectedBot={whiteBot}
-          setSelectedBot={setWhiteBot}
-          disabled={isPlaying}
-        />
-        <BotSelector
-          playerName="Black"
-          availableBots={bots}
-          selectedBot={blackBot}
-          setSelectedBot={setBlackBot}
-          disabled={isPlaying}
-        />
-        <ButtonGroup color="primary" aria-label="outlined primary button group">
-          <ToggleButton
-            className={styles.Button}
-            aria-label="list"
-            value="showConfig"
-            selected={showConfig}
-            onChange={() => setShowConfig(!showConfig)}>
-            <Settings />
-          </ToggleButton>
-          <ToggleButton
-            className={styles.Button}
-            aria-label="list"
-            value="showStats"
-            selected={showStats}
-            onChange={() => setShowStats(!showStats)}>
-            <Timeline />
-          </ToggleButton>
-          <ToggleButton
-            className={styles.Button}
-            aria-label="list"
-            value="play"
-            selected={isPlaying}
-            onChange={() => setPlaying(!isPlaying)}>
-            {isPlaying ? <PlayArrow /> : <Pause />}
-          </ToggleButton>
-          <Button className={styles.Button} onClick={newGame} aria-label="list">
-            <Clear />
-          </Button>
-        </ButtonGroup>
-      </div>
-      <div className={styles.Chessboard}>
-        <Chessboard position={fen} allowDrag={onDragStart} onDrop={onMovePiece} />
-      </div>
-      <History history={history} />
+      <Config newGame={newGame} stopstart={stopstart} />
+      <table className={styles.MainTable}>
+        <tr>
+          <td>
+            <p className={r90 ? styles.AlignRight : ''}>{r180 ? wtext : btext}</p>
+            <div className={r90 ? styles.Rotate : ''}>
+              <Chessboard
+                position={fen}
+                allowDrag={onDragStart}
+                onDrop={onMovePiece}
+                orientation={!r180 ? 'white' : 'black'}
+              />
+            </div>
+            <p>{r180 ? btext : wtext}</p>
+          </td>
+          <td className={styles.PanelTd}>
+            <Panel stopstart={stopstart} />
+            <History gotoMark={gotoMark} />
+          </td>
+        </tr>
+      </table>
     </div>
   );
 };

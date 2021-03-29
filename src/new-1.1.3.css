@@ -97,8 +97,8 @@ body {
   /* Center body in page */
   margin: 0 auto;
   max-width: 750px;
-  padding: 2rem;
-  border-radius: 6px;
+  padding: 5px;
+  border-radius: 5px;
   overflow-x: hidden;
   word-break: break-word;
   overflow-wrap: break-word;

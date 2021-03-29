@@ -1,12 +1,36 @@
+body {
+  margin: 1px;
+  padding: 1px;
+}
+#root {
+  margin: 1px;
+}
 .App {
   min-width: 750px;
 }
-
+.MainTable {
+  margin: 1px;
+  border: 1px;
+}
+.MainTable td {
+  margin: 1px;
+  border: 1px;
+  padding: 0px;
+  border-spacing: 0px;
+  width: 100%;
+}
+.PanelTd {
+  vertical-align: top;
+}
 .TopNav {
   text-align: center;
 }
 
 .Button {
+  margin: 5px;
+}
+
+.Buttons {
   margin: 5px;
 }
 
@@ -23,8 +47,32 @@
   float: left;
 }
 
+.Dialog {
+  text-align: center;
+}
+
+.HistoryTable {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.HistoryTable td {
+  padding: 3px;
+  text-align: center;
+}
+
+.MarkHistory {
+  background-color: aquamarine;
+}
+
 .History {
-  float: right;
-  height: 525px;
-  width: 120px;
+  margin: 1px;
+}
+
+.Rotate {
+  transform: rotate(90deg);
+}
+
+.AlignRight {
+  text-align: right;
 }
